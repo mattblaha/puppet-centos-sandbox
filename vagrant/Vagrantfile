@@ -1,0 +1,66 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+
+config.hostmanager.enabled = true
+config.hostmanager.ignore_private_ip = false
+config.hostmanager.include_offline = true
+
+
+config.vm.define "puppet", primary: true do |puppet|
+  # Puppetmaster on CentOS 7
+  config.vm.provider "libvirt" do |v|
+    v.memory = 4096
+  end
+  #puppet.vm.synced_folder ".", "/vagrant"
+  puppet.vm.synced_folder "../", "/puppet_code", type: "nfs", nfs_udp: false
+  #puppet.vm.synced_folder "../puppetserver", "/puppet_puppetserver"
+  puppet.vm.box = "centos/7"
+  puppet.vm.hostname = "puppet.example.com"
+  puppet.hostmanager.aliases = %w(puppet)
+  puppet.vm.network "forwarded_port", guest: 80, host: 8080
+  puppet.vm.provision "shell", inline: <<-SHELL
+    sudo rpm -ivh https://yum.puppetlabs.com/puppet6-release-el-7.noarch.rpm
+    sudo yum install puppetserver rubygems -y
+    sudo /opt/puppetlabs/puppet/bin/gem install r10k
+    #sudo gem install r10k
+    
+    # replace the puppet code directory with the NFS mount
+    sudo rm -rf /etc/puppetlabs/code
+    sudo mkdir -p /etc/puppetlabs/code/environments
+    sudo ln -s /puppet_code/ /etc/puppetlabs/code/environments/local
+
+    sudo /opt/puppetlabs/puppet/bin/r10k puppetfile install --puppetfile=/etc/puppetlabs/code/environments/local/Puppetfile --moduledir=/etc/puppetlabs/code/environments/local/modules/
+
+    #sudo sed -i 's/2g/512m/g' /etc/sysconfig/puppetserver
+
+    echo "*.example.com" | sudo tee /etc/puppetlabs/puppet/autosign.conf
+
+    echo "environment = local" | sudo tee -a /etc/puppetlabs/puppet/puppet.conf
+
+    sudo systemctl enable puppetserver
+    sudo systemctl start puppetserver
+    sudo /opt/puppetlabs/bin/puppet agent -t --environment local|| true
+  SHELL
+end
+
+(7..8).each() do |i|
+config.vm.define "agent#{i}" do |agent|
+  agent.vm.provider "libvirt" do |v|
+    v.memory = 2048
+  end
+
+  agent.vm.box = "centos/#{i}"
+  agent.vm.hostname = "agent#{i}.example.com"
+  agent.hostmanager.aliases = "agent#{i}"
+  agent.vm.provision "shell", inline: <<-SHELL
+    sudo rpm -ivh https://yum.puppetlabs.com/puppet6-release-el-#{i}.noarch.rpm
+    sudo yum install puppet-agent -y
+    sudo /opt/puppetlabs/bin/puppet agent -t --environment local || true
+  SHELL
+end
+end
+
+
+end
