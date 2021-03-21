@@ -57,6 +57,16 @@ class puppetmaster(
     require => Package[$mod_wsgi_package_name],
   }
 
+  $ssl_dir = $::settings::ssldir
+  $puppetboard_certname = 'puppet.example.com'
+
+  # generated with audit2allow
+  # do not disable SELinux
+  selinux::module { 'puppetboard':
+  ensure    => 'present',
+    source_te => 'puppet:///modules/puppetmaster/puppetboard.te',
+    builder   => 'refpolicy'
+  }->
   package { 'git':
     ensure => present,
     }->
@@ -66,12 +76,26 @@ class puppetmaster(
     require => Package['python36-virtualenv'],
   }->
   class { 'puppetboard':
-    # use python3 when setting up the virtualenv for puppetboard
-    virtualenv_version => '3',
     # specify other parameters here
+    manage_selinux => true,
     default_environment => '*',
+    puppetdb_host       => '127.0.0.1',
+    puppetdb_port       => 8081,
+    puppetdb_key        => "${ssl_dir}/private_keys/${puppetboard_certname}.pem",
+    puppetdb_ssl_verify => "${ssl_dir}/certs/ca.pem",
+    puppetdb_cert       => "${ssl_dir}/certs/${puppetboard_certname}.pem",
   }
 
+  # a hack to add the puppetboard user to the puppet group so it can
+  # read the certificates to auth to puppetbb
+  exec { 'puppetboard group membership':
+    unless  => '/bin/grep -q "puppet:.*puppetboard" /etc/group',
+    command => '/sbin/usermod -aG puppet puppetboard',
+    require => User['puppetboard'],
+    refreshonly => true,
+    subscribe   => User['puppetboard'],
+    notify  => Service['httpd'],
+  }
 
   # Access Puppetboard through pboard.example.com, port 8888
   class { 'puppetboard::apache::vhost':

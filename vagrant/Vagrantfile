@@ -21,7 +21,7 @@ config.vm.define "puppet", primary: true do |puppet|
   puppet.hostmanager.aliases = %w(puppet)
   puppet.vm.network "forwarded_port", guest: 80, host: 8080
   puppet.vm.provision "shell", inline: <<-SHELL
-    sudo rpm -ivh https://yum.puppetlabs.com/puppet6-release-el-7.noarch.rpm
+    sudo rpm -ivh https://yum.puppetlabs.com/puppet7-release-el-7.noarch.rpm
     sudo yum install puppetserver rubygems -y
     sudo /opt/puppetlabs/puppet/bin/gem install r10k
     #sudo gem install r10k
@@ -38,6 +38,7 @@ config.vm.define "puppet", primary: true do |puppet|
     echo "*.example.com" | sudo tee /etc/puppetlabs/puppet/autosign.conf
 
     echo "environment = local" | sudo tee -a /etc/puppetlabs/puppet/puppet.conf
+    echo "dns_alt_names = puppet,puppet.example.com,puppetdb,puppetdb.example.com,puppetboard,puppetboard.example.com,IP:127.0.0.1" | sudo tee -a /etc/puppetlabs/puppet/puppet.conf
 
     sudo systemctl enable puppetserver
     sudo systemctl start puppetserver
@@ -55,7 +56,7 @@ config.vm.define "agent#{i}" do |agent|
   agent.vm.hostname = "agent#{i}.example.com"
   agent.hostmanager.aliases = "agent#{i}"
   agent.vm.provision "shell", inline: <<-SHELL
-    sudo rpm -ivh https://yum.puppetlabs.com/puppet6-release-el-#{i}.noarch.rpm
+    sudo rpm -ivh https://yum.puppetlabs.com/puppet7-release-el-#{i}.noarch.rpm
     sudo yum install puppet-agent -y
     sudo /opt/puppetlabs/bin/puppet agent -t --environment local || true
   SHELL

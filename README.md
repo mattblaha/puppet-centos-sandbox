@@ -1,6 +1,6 @@
 This is essentially a standard Puppet [control repo](https://github.com/puppetlabs/control-repo) with a Vagrant environment for testing against CentOS 7 and 8 while still being suitable to deploy with r10k. The test environment includes PuppetDB as well as [Puppetboard](https://github.com/voxpupuli/puppetboard). Built largely to help new Puppet users navigate the ecosystem, the Puppet Master bootstraps itself and only shell provisioning is used in Vagrant.
 
-I have only tested extensively on Fedora 32.
+I have only tested the current version on Fedora 33. (And 32 on Puppet 6.)
 
 # Starting Vagrant Environment
 

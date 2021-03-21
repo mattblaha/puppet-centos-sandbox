@@ -1,0 +1,15 @@
+module puppetboard 1.0;
+
+require {
+	type httpd_t;
+	type puppet_etc_t;
+	type httpd_sys_content_t;
+	class file { getattr ioctl open read };
+	class dir write;
+}
+
+#============= httpd_t ==============
+
+#!!!! This avc can be allowed using the boolean 'httpd_unified'
+allow httpd_t httpd_sys_content_t:dir write;
+allow httpd_t puppet_etc_t:file { getattr ioctl open read };
